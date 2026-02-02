@@ -22,6 +22,7 @@
             --gray-100: #edf2f7;
             --gray-200: #e2e8f0;
             --gray-300: #cbd5e0;
+            --gray-600: #718096;
             --gray-700: #4a5568;
             --gray-800: #2d3748;
             --gray-900: #1a202c;
@@ -718,7 +719,7 @@
                 </h1>
                 <div class="time-badge" id="lastUpdateTime">Just now</div>
             </div>
-            <p class="header-subtitle">Ethical monitoring with 100s intervals</p>
+            <p class="header-subtitle" id="intervalText">Ethical monitoring with proper intervals</p>
         </header>
 
         <!-- Quick Stats -->
@@ -768,7 +769,7 @@
             </div>
             <div class="ethical-content">
                 <h4>Ethical Use Only</h4>
-                <p>Monitor only websites you own or have permission to monitor. 100s minimum interval per URL.</p>
+                <p id="ethicalText">Monitor only websites you own or have permission to monitor. Minimum 100s interval per URL.</p>
             </div>
         </div>
 
@@ -809,7 +810,7 @@
                     <span class="terminal-prompt">$</span> Loaded {{ data.urls|length }} URLs
                 </div>
                 <div class="terminal-line info">
-                    <span class="terminal-prompt">$</span> Interval: 100 seconds per URL
+                    <span class="terminal-prompt">$</span> Interval: Loading...
                 </div>
             </div>
         </div>
@@ -819,10 +820,10 @@
             <div class="settings-section">
                 <div class="settings-group">
                     <label>Check Interval</label>
-                    <select>
-                        <option value="100" selected>100 seconds</option>
-                        <option value="300">5 minutes</option>
-                        <option value="600">10 minutes</option>
+                    <select id="intervalSelect" onchange="updateIntervalDisplay()">
+                        <option value="300">5 minutes (300s)</option>
+                        <option value="600">10 minutes (600s)</option>
+                        <option value="900">15 minutes (900s)</option>
                     </select>
                 </div>
                 <div class="settings-group">
@@ -836,6 +837,10 @@
                 <button class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="saveSettings()">
                     <i class="fas fa-save"></i>
                     Save Settings
+                </button>
+                <button class="btn btn-outline" style="width: 100%; margin-top: 10px;" onclick="resetSettings()">
+                    <i class="fas fa-undo"></i>
+                    Reset to Defaults
                 </button>
             </div>
         </div>
@@ -871,7 +876,8 @@
         let monitoringData = null;
         let currentTab = 'monitoring';
         let lastManualCheck = 0;
-        const CHECK_COOLDOWN = 30000; // 30 seconds cooldown
+        let currentInterval = 300; // Default to 300 seconds (5 minutes)
+        const CHECK_COOLDOWN = 30000; // 30 seconds cooldown for manual checks
 
         // Initialize on load
         document.addEventListener('DOMContentLoaded', function() {
@@ -930,6 +936,13 @@
                 document.getElementById('lastUpdateTime').textContent = 
                     now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 
+                // Update interval display
+                if (monitoringData.monitoring_info?.interval) {
+                    currentInterval = monitoringData.monitoring_info.interval;
+                    updateIntervalText(currentInterval);
+                    updateIntervalSelect(currentInterval);
+                }
+                
                 showToast('Dashboard updated', 'success');
                 
             } catch (error) {
@@ -940,6 +953,48 @@
                 refreshBtn.innerHTML = '<i class="fas fa-redo"></i>';
                 refreshBtn.disabled = false;
             }
+        }
+
+        // Update interval text display
+        function updateIntervalText(interval) {
+            const minutes = Math.floor(interval / 60);
+            const seconds = interval % 60;
+            let intervalText = '';
+            
+            if (minutes > 0) {
+                intervalText = `${minutes}m ${seconds > 0 ? seconds + 's' : ''}`;
+            } else {
+                intervalText = `${seconds}s`;
+            }
+            
+            document.getElementById('intervalText').textContent = 
+                `Ethical monitoring with ${interval}s (${intervalText}) intervals`;
+            
+            document.getElementById('ethicalText').textContent = 
+                `Monitor only websites you own or have permission to monitor. Minimum ${interval}s interval per URL.`;
+            
+            // Update terminal output
+            const terminal = document.getElementById('terminalOutput');
+            const lines = terminal.innerHTML.split('</div>');
+            if (lines.length > 2) {
+                lines[2] = lines[2].replace(/Interval: .*/, `Interval: ${interval}s (${intervalText}) per URL`);
+                terminal.innerHTML = lines.join('</div>') + '</div>';
+            }
+        }
+
+        // Update interval select dropdown
+        function updateIntervalSelect(interval) {
+            const select = document.getElementById('intervalSelect');
+            if (select) {
+                select.value = interval.toString();
+            }
+        }
+
+        // Update interval display when changed
+        function updateIntervalDisplay() {
+            const select = document.getElementById('intervalSelect');
+            const interval = parseInt(select.value);
+            updateIntervalText(interval);
         }
 
         // Update dashboard UI
@@ -1011,6 +1066,19 @@
                 const statusText = isUp ? 'OPERATIONAL' : 'DOWN';
                 const statusCode = lastCheck?.status_code || 'N/A';
                 const responseTime = lastCheck?.response_time ? `${(lastCheck.response_time * 1000).toFixed(0)}ms` : 'N/A';
+                const interval = data.monitoring_info?.interval || 300;
+                
+                // Format next check time
+                let nextCheckText = 'Now';
+                if (nextCheck > 0) {
+                    if (nextCheck < 60) {
+                        nextCheckText = Math.round(nextCheck) + 's';
+                    } else {
+                        const minutes = Math.floor(nextCheck / 60);
+                        const seconds = Math.round(nextCheck % 60);
+                        nextCheckText = `${minutes}m${seconds > 0 ? ` ${seconds}s` : ''}`;
+                    }
+                }
                 
                 html += `
                     <div class="url-card ${isUp ? '' : 'down'}" onclick="showUrlDetails(${index})">
@@ -1036,7 +1104,7 @@
                                 <span class="label">Status</span>
                             </div>
                             <div class="url-stat">
-                                <span class="value">${nextCheck > 0 ? Math.round(nextCheck) + 's' : 'Now'}</span>
+                                <span class="value">${nextCheckText}</span>
                                 <span class="label">Next</span>
                             </div>
                         </div>
@@ -1276,7 +1344,22 @@
         // Save settings
         function saveSettings() {
             const limit = document.getElementById('settingsHistoryLimit').value;
-            showToast(`Settings saved (History: ${limit} entries)`, 'success');
+            const interval = document.getElementById('intervalSelect').value;
+            
+            // In a real app, you would send this to the server
+            // For now, just update local display
+            currentInterval = parseInt(interval);
+            updateIntervalText(currentInterval);
+            
+            showToast(`Settings saved (Interval: ${interval}s, History: ${limit} entries)`, 'success');
+        }
+
+        // Reset settings
+        function resetSettings() {
+            document.getElementById('settingsHistoryLimit').value = '20';
+            document.getElementById('intervalSelect').value = '300';
+            updateIntervalDisplay();
+            showToast('Settings reset to defaults', 'success');
         }
 
         // Show toast notification
@@ -1339,4 +1422,4 @@
         });
     </script>
 </body>
-</html>
+    </html>
