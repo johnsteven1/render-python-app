@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ethical URL Monitor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-dark: #1a365d;
+            --primary: #2d3748;
+            --primary-light: #4a5568;
+            --success: #38a169;
+            --success-light: #9ae6b4;
+            --danger: #e53e3e;
+            --danger-light: #fed7d7;
+            --warning: #d69e2e;
+            --warning-light: #feebc8;
+            --info: #3182ce;
+            --info-light: #bee3f8;
+            --gray-50: #f7fafc;
+            --gray-100: #edf2f7;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e0;
+            --gray-700: #4a5568;
+            --gray-800: #2d3748;
+            --gray-900: #1a202c;
+            --border-radius: 16px;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 8px rgba(0,0,0,0.12);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            color: var(--gray-800);
+            line-height: 1.5;
+            font-size: 15px;
+            padding: 12px;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Mobile Container */
+        .mobile-container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Mobile Header */
+        .mobile-header {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: var(--shadow-md);
+            border-left: 6px solid var(--success);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .app-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--gray-900);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .app-title i {
+            color: var(--success);
+        }
+
+        .time-badge {
+            background: var(--gray-100);
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .header-subtitle {
+            color: var(--gray-600);
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        /* Quick Stats Row */
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .quick-stat {
+            background: white;
+            padding: 15px 10px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .quick-stat .value {
+            font-size: 1.4rem;
+            font-weight: 800;
+            display: block;
+            margin-bottom: 5px;
+            color: var(--gray-900);
+        }
+
+        .quick-stat .label {
+            font-size: 0.75rem;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .quick-stat.up .value { color: var(--success); }
+        .quick-stat.down .value { color: var(--danger); }
+
+        /* Mobile Navigation */
+        .mobile-nav {
+            display: flex;
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 8px;
+            margin: 15px 0;
+            box-shadow: var(--shadow-md);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .nav-btn {
+            flex: 1;
+            padding: 12px 8px;
+            border: none;
+            background: transparent;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--gray-600);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            min-width: 80px;
+            white-space: nowrap;
+        }
+
+        .nav-btn.active {
+            background: var(--success);
+            color: white;
+        }
+
+        .nav-btn i {
+            font-size: 1.2rem;
+        }
+
+        /* Content Areas */
+        .content-area {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .content-area.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* URL Cards for Mobile */
+        .url-cards {
+            margin-bottom: 20px;
+        }
+
+        .url-card {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: var(--shadow-md);
+            border-left: 6px solid var(--success);
+            transition: transform 0.3s ease;
+        }
+
+        .url-card.down {
+            border-left-color: var(--danger);
+            background: linear-gradient(to right, white, #fff5f5);
+        }
+
+        .url-card:active {
+            transform: scale(0.98);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .url-title {
+            font-weight: 700;
+            color: var(--gray-900);
+            font-size: 1.1rem;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .status-dot.up {
+            background: var(--success);
+            box-shadow: 0 0 0 4px rgba(56, 161, 105, 0.2);
+            animation: pulse-up 2s infinite;
+        }
+
+        @keyframes pulse-up {
+            0%, 100% { box-shadow: 0 0 0 4px rgba(56, 161, 105, 0.2); }
+            50% { box-shadow: 0 0 0 8px rgba(56, 161, 105, 0.1); }
+        }
+
+        .status-dot.down {
+            background: var(--danger);
+            box-shadow: 0 0 0 4px rgba(229, 62, 62, 0.2);
+            animation: pulse-down 1s infinite;
+        }
+
+        @keyframes pulse-down {
+            0%, 100% { box-shadow: 0 0 0 4px rgba(229, 62, 62, 0.2); }
+            50% { box-shadow: 0 0 0 10px rgba(229, 62, 62, 0.1); }
+        }
+
+        .status-text {
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .status-text.up { color: var(--success); }
+        .status-text.down { color: var(--danger); }
+
+        .url-display {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: var(--gray-700);
+            background: var(--gray-50);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            word-break: break-all;
+            border-left: 3px solid var(--gray-300);
+        }
+
+        .url-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .url-stat {
+            background: var(--gray-100);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .url-stat .value {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--gray-900);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .url-stat .label {
+            font-size: 0.75rem;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        /* Mobile Controls */
+        .mobile-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 15px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+            border-top-left-radius: var(--border-radius);
+            border-top-right-radius: var(--border-radius);
+        }
+
+        .mobile-controls .btn {
+            flex: 1;
+            padding: 14px;
+            font-size: 0.95rem;
+        }
+
+        /* Buttons for Mobile */
+        .btn {
+            padding: 14px 20px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #2f855a);
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--gray-300);
+            color: var(--gray-700);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        /* History for Mobile */
+        .history-list {
+            max-height: 60vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 80px; /* Space for fixed controls */
+        }
+
+        .history-item {
+            background: white;
+            padding: 16px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            border-left: 4px solid var(--success);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .history-item.error {
+            border-left-color: var(--danger);
+            background: linear-gradient(to right, white, #fff5f5);
+        }
+
+        .history-time {
+            font-size: 0.8rem;
+            color: var(--gray-600);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .history-status.success {
+            background: var(--success-light);
+            color: #276749;
+        }
+
+        .history-status.error {
+            background: var(--danger-light);
+            color: #c53030;
+        }
+
+        .history-url {
+            font-size: 0.85rem;
+            color: var(--gray-700);
+            margin: 8px 0;
+            word-break: break-all;
+        }
+
+        .history-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        /* Terminal for Mobile */
+        .mobile-terminal {
+            background: var(--gray-900);
+            color: var(--success-light);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin: 20px 0 80px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .terminal-line {
+            margin-bottom: 6px;
+            word-break: break-all;
+        }
+
+        .terminal-line.success { color: var(--success-light); }
+        .terminal-line.error { color: var(--danger-light); }
+        .terminal-line.info { color: var(--info-light); }
+
+        /* Ethical Banner for Mobile */
+        .mobile-ethical-banner {
+            background: linear-gradient(to right, var(--warning-light), #fff5eb);
+            border: 2px solid var(--warning);
+            border-radius: var(--border-radius);
+            padding: 18px;
+            margin: 20px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .ethical-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--warning);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            flex-shrink: 0;
+            font-size: 1.2rem;
+        }
+
+        .ethical-content h4 {
+            color: #744210;
+            margin-bottom: 6px;
+            font-size: 1.1rem;
+        }
+
+        .ethical-content p {
+            color: #975a16;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        /* Filters for Mobile */
+        .mobile-filters {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .mobile-filters select,
+        .mobile-filters input {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px;
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            background: white;
+        }
+
+        /* Loading */
+        .loader {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast for Mobile */
+        .mobile-toast {
+            position: fixed;
+            top: 20px;
+            left: 12px;
+            right: 12px;
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-100px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            border-left: 6px solid var(--success);
+        }
+
+        .mobile-toast.show {
+            transform: translateY(0);
+        }
+
+        .mobile-toast.error {
+            border-left-color: var(--danger);
+        }
+
+        .mobile-toast.warning {
+            border-left-color: var(--warning);
+        }
+
+        .toast-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toast-icon {
+            font-size: 1.4rem;
+            color: var(--success);
+        }
+
+        .mobile-toast.error .toast-icon { color: var(--danger); }
+        .mobile-toast.warning .toast-icon { color: var(--warning); }
+
+        .toast-text h4 {
+            color: var(--gray-900);
+            margin-bottom: 4px;
+            font-size: 1rem;
+        }
+
+        .toast-text p {
+            color: var(--gray-700);
+            font-size: 0.9rem;
+        }
+
+        /* Progress Bars for Mobile */
+        .progress-container {
+            margin: 12px 0;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--gray-700);
+            margin-bottom: 6px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--gray-200);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), #2f855a);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        /* Settings for Mobile */
+        .settings-section {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 80px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .settings-group {
+            margin-bottom: 20px;
+        }
+
+        .settings-group label {
+            display: block;
+            color: var(--gray-700);
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .settings-group select {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            font-size: 1rem;
+            background: white;
+        }
+
+        /* Empty States */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--gray-500);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            color: var(--gray-700);
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        /* Custom Scrollbar for Mobile */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--gray-100);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 3px;
+        }
+
+        /* Responsive Adjustments */
+        @media (min-width: 768px) {
+            body {
+                padding: 20px;
+                max-width: 768px;
+                margin: 0 auto;
+            }
+            
+            .mobile-controls {
+                position: static;
+                margin-top: 20px;
+                box-shadow: var(--shadow-md);
+                border-radius: var(--border-radius);
+            }
+            
+            .history-list, .mobile-terminal, .settings-section {
+                margin-bottom: 20px;
+            }
+        }
+
+        /* Touch Feedback */
+        .touch-feedback:active {
+            opacity: 0.8;
+        }
+
+        /* Prevent text selection on buttons */
+        .btn, .nav-btn {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <!-- Mobile Header -->
+        <header class="mobile-header">
+            <div class="header-top">
+                <h1 class="app-title">
+                    <i class="fas fa-shield-alt"></i>
+                    URL Monitor
+                </h1>
+                <div class="time-badge" id="lastUpdateTime">Just now</div>
+            </div>
+            <p class="header-subtitle">Ethical monitoring with 100s intervals</p>
+        </header>
+
+        <!-- Quick Stats -->
+        <div class="quick-stats">
+            <div class="quick-stat">
+                <span class="value" id="totalUrls">2</span>
+                <span class="label">URLs</span>
+            </div>
+            <div class="quick-stat up">
+                <span class="value" id="upCount">1</span>
+                <span class="label">Up</span>
+            </div>
+            <div class="quick-stat down">
+                <span class="value" id="downCount">1</span>
+                <span class="label">Down</span>
+            </div>
+            <div class="quick-stat">
+                <span class="value" id="uptimePercent">50%</span>
+                <span class="label">Uptime</span>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation -->
+        <nav class="mobile-nav">
+            <button class="nav-btn active" onclick="switchTab('monitoring')">
+                <i class="fas fa-globe"></i>
+                <span>Monitor</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('history')">
+                <i class="fas fa-history"></i>
+                <span>History</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('terminal')">
+                <i class="fas fa-terminal"></i>
+                <span>Terminal</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('settings')">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </button>
+        </nav>
+
+        <!-- Ethical Banner -->
+        <div class="mobile-ethical-banner">
+            <div class="ethical-icon">
+                <i class="fas fa-handshake"></i>
+            </div>
+            <div class="ethical-content">
+                <h4>Ethical Use Only</h4>
+                <p>Monitor only websites you own or have permission to monitor. 100s minimum interval per URL.</p>
+            </div>
+        </div>
+
+        <!-- Monitoring Tab -->
+        <div id="monitoringTab" class="content-area active">
+            <div class="url-cards" id="urlsList">
+                <!-- URL cards will be loaded here -->
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="historyTab" class="content-area">
+            <div class="mobile-filters">
+                <select id="historyUrlFilter" onchange="loadHistory()">
+                    <option value="all">All URLs</option>
+                    {% for url in data.urls %}
+                    <option value="{{ url }}">URL {{ loop.index }}</option>
+                    {% endfor %}
+                </select>
+                <select id="historyStatusFilter" onchange="loadHistory()">
+                    <option value="all">All Status</option>
+                    <option value="success">Success</option>
+                    <option value="error">Errors</option>
+                </select>
+            </div>
+            <div class="history-list" id="historyList">
+                <!-- History will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Terminal Tab -->
+        <div id="terminalTab" class="content-area">
+            <div class="mobile-terminal" id="terminalOutput">
+                <div class="terminal-line info">
+                    <span class="terminal-prompt">$</span> Starting Ethical URL Monitor...
+                </div>
+                <div class="terminal-line success">
+                    <span class="terminal-prompt">$</span> Loaded {{ data.urls|length }} URLs
+                </div>
+                <div class="terminal-line info">
+                    <span class="terminal-prompt">$</span> Interval: 100 seconds per URL
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settingsTab" class="content-area">
+            <div class="settings-section">
+                <div class="settings-group">
+                    <label>Check Interval</label>
+                    <select>
+                        <option value="100" selected>100 seconds</option>
+                        <option value="300">5 minutes</option>
+                        <option value="600">10 minutes</option>
+                    </select>
+                </div>
+                <div class="settings-group">
+                    <label>History Limit</label>
+                    <select id="settingsHistoryLimit">
+                        <option value="20" selected>20 entries</option>
+                        <option value="50">50 entries</option>
+                        <option value="100">100 entries</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="saveSettings()">
+                    <i class="fas fa-save"></i>
+                    Save Settings
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Controls (Fixed at bottom) -->
+        <div class="mobile-controls">
+            <button class="btn btn-primary" onclick="checkAllUrls()" id="checkAllBtn">
+                <i class="fas fa-sync-alt"></i>
+                Check All
+            </button>
+            <button class="btn btn-success" onclick="refreshDashboard()" id="refreshBtn">
+                <i class="fas fa-redo"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="mobile-toast" id="toast">
+        <div class="toast-content">
+            <div class="toast-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="toast-text">
+                <h4 id="toastTitle">Success</h4>
+                <p id="toastMessage">Operation completed</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let monitoringData = null;
+        let currentTab = 'monitoring';
+        let lastManualCheck = 0;
+        const CHECK_COOLDOWN = 30000; // 30 seconds cooldown
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboard();
+            // Auto-refresh every 30 seconds
+            setInterval(loadDashboard, 30000);
+        });
+
+        // Switch tabs
+        function switchTab(tabName) {
+            // Update navigation buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('.content-area').forEach(area => {
+                area.classList.remove('active');
+            });
+            
+            // Activate selected tab
+            const tabButtons = document.querySelectorAll('.nav-btn');
+            const tabIndex = Array.from(tabButtons).findIndex(btn => 
+                btn.querySelector('span').textContent.toLowerCase().includes(tabName)
+            );
+            
+            if (tabIndex !== -1) {
+                tabButtons[tabIndex].classList.add('active');
+            }
+            
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            currentTab = tabName;
+            
+            // Load data for the tab
+            if (tabName === 'history') {
+                loadHistory();
+            }
+        }
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                const refreshBtn = document.getElementById('refreshBtn');
+                refreshBtn.innerHTML = '<div class="loader"></div>';
+                refreshBtn.disabled = true;
+                
+                const response = await fetch('/api/status');
+                if (!response.ok) throw new Error('Failed to fetch status');
+                
+                monitoringData = await response.json();
+                updateDashboardUI(monitoringData);
+                
+                refreshBtn.innerHTML = '<i class="fas fa-redo"></i>';
+                refreshBtn.disabled = false;
+                
+                // Update last update time
+                const now = new Date();
+                document.getElementById('lastUpdateTime').textContent = 
+                    now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                showToast('Dashboard updated', 'success');
+                
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                showToast('Failed to load data', 'error');
+                
+                const refreshBtn = document.getElementById('refreshBtn');
+                refreshBtn.innerHTML = '<i class="fas fa-redo"></i>';
+                refreshBtn.disabled = false;
+            }
+        }
+
+        // Update dashboard UI
+        function updateDashboardUI(data) {
+            if (!data) return;
+            
+            const urls = data.monitoring_info?.urls || [];
+            const checks = data.checks || [];
+            const stats = data.statistics || {};
+            
+            // Update quick stats
+            document.getElementById('totalUrls').textContent = urls.length;
+            
+            // Calculate up/down counts
+            const upCount = checks.filter(c => c.success).length;
+            const downCount = checks.length - upCount;
+            document.getElementById('upCount').textContent = upCount;
+            document.getElementById('downCount').textContent = downCount;
+            
+            // Calculate average uptime
+            let totalUptime = 0;
+            let urlCount = 0;
+            urls.forEach(url => {
+                if (stats[url] && stats[url].uptime_percentage) {
+                    totalUptime += stats[url].uptime_percentage;
+                    urlCount++;
+                }
+            });
+            const avgUptime = urlCount > 0 ? Math.round(totalUptime / urlCount) : 0;
+            document.getElementById('uptimePercent').textContent = avgUptime + '%';
+            
+            // Update URL cards
+            updateUrlCards(data);
+            
+            // Update terminal output
+            if (currentTab === 'terminal') {
+                updateTerminalOutput(data);
+            }
+        }
+
+        // Update URL cards
+        function updateUrlCards(data) {
+            const urlsList = document.getElementById('urlsList');
+            const urls = data.monitoring_info?.urls || [];
+            const checks = data.checks || [];
+            const stats = data.statistics || {};
+            const nextChecks = data.monitoring_info?.next_checks || {};
+            
+            if (urls.length === 0) {
+                urlsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-plus-circle"></i>
+                        <h3>No URLs Configured</h3>
+                        <p>Add URLs to begin monitoring</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            urls.forEach((url, index) => {
+                const lastCheck = checks.find(c => c.url === url);
+                const urlStats = stats[url] || {};
+                const nextCheck = nextChecks[url] || 0;
+                const checkCount = data.monitoring_info?.check_counts?.[url] || 0;
+                
+                const isUp = lastCheck?.success;
+                const statusClass = isUp ? 'up' : 'down';
+                const statusText = isUp ? 'OPERATIONAL' : 'DOWN';
+                const statusCode = lastCheck?.status_code || 'N/A';
+                const responseTime = lastCheck?.response_time ? `${(lastCheck.response_time * 1000).toFixed(0)}ms` : 'N/A';
+                
+                html += `
+                    <div class="url-card ${isUp ? '' : 'down'}" onclick="showUrlDetails(${index})">
+                        <div class="card-header">
+                            <div class="url-title">URL ${index + 1}</div>
+                            <div class="status-indicator">
+                                <span class="status-dot ${statusClass}"></span>
+                                <span class="status-text ${statusClass}">${statusText}</span>
+                            </div>
+                        </div>
+                        <div class="url-display">${url}</div>
+                        <div class="url-stats">
+                            <div class="url-stat">
+                                <span class="value">${urlStats.uptime_percentage || 0}%</span>
+                                <span class="label">Uptime</span>
+                            </div>
+                            <div class="url-stat">
+                                <span class="value">${checkCount}</span>
+                                <span class="label">Checks</span>
+                            </div>
+                            <div class="url-stat">
+                                <span class="value">${statusCode}</span>
+                                <span class="label">Status</span>
+                            </div>
+                            <div class="url-stat">
+                                <span class="value">${nextCheck > 0 ? Math.round(nextCheck) + 's' : 'Now'}</span>
+                                <span class="label">Next</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <button class="btn btn-primary" style="width: 100%;" 
+                                    onclick="checkSingleUrl(${index}, event)" id="checkBtn${index}">
+                                <i class="fas fa-sync-alt"></i>
+                                Check Now
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            urlsList.innerHTML = html;
+            
+            // Update button states
+            updateButtonStates(data);
+        }
+
+        // Update button states based on cooldown
+        function updateButtonStates(data) {
+            const nextChecks = data.monitoring_info?.next_checks || {};
+            const urls = data.monitoring_info?.urls || [];
+            
+            urls.forEach((url, index) => {
+                const nextCheck = nextChecks[url] || 0;
+                const btn = document.getElementById(`checkBtn${index}`);
+                
+                if (btn) {
+                    if (nextCheck > 0) {
+                        btn.disabled = true;
+                        btn.innerHTML = `<i class="fas fa-clock"></i> Wait ${Math.round(nextCheck)}s`;
+                    } else {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-sync-alt"></i> Check Now';
+                    }
+                }
+            });
+        }
+
+        // Load history
+        async function loadHistory() {
+            try {
+                const historyList = document.getElementById('historyList');
+                historyList.innerHTML = '<div style="text-align: center; padding: 30px;"><div class="loader"></div></div>';
+                
+                const urlFilter = document.getElementById('historyUrlFilter').value;
+                const statusFilter = document.getElementById('historyStatusFilter').value;
+                const limit = document.getElementById('settingsHistoryLimit').value || 20;
+                
+                let url = `/api/history?limit=${limit}`;
+                if (urlFilter !== 'all') url += `&url=${encodeURIComponent(urlFilter)}`;
+                if (statusFilter !== 'all') url += `&success=${statusFilter === 'success'}`;
+                
+                const response = await fetch(url);
+                const history = await response.json();
+                
+                if (!history || history.length === 0) {
+                    historyList.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-history"></i>
+                            <h3>No History</h3>
+                            <p>No checks recorded yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '';
+                history.forEach(check => {
+                    const date = new Date(check.timestamp);
+                    const statusClass = check.success ? 'success' : 'error';
+                    const statusText = check.success ? 'SUCCESS' : 'ERROR';
+                    
+                    html += `
+                        <div class="history-item ${check.success ? '' : 'error'}">
+                            <div class="history-time">
+                                <span>${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                <span class="history-status ${statusClass}">${statusText}</span>
+                            </div>
+                            <div class="history-url">${check.url}</div>
+                            <div class="history-details">
+                                <span style="font-family: 'Courier New', monospace; font-weight: 600;">
+                                    ${check.status_code || 'N/A'}
+                                </span>
+                                <span>
+                                    ${check.response_time ? (check.response_time * 1000).toFixed(0) + 'ms' : 'N/A'}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                historyList.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading history:', error);
+                document.getElementById('historyList').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <h3>Failed to Load</h3>
+                        <p>Could not load history</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Update terminal output
+        function updateTerminalOutput(data) {
+            const terminal = document.getElementById('terminalOutput');
+            const checks = data.checks || [];
+            const latestCheck = checks[checks.length - 1];
+            
+            if (latestCheck) {
+                const time = new Date(latestCheck.timestamp).toLocaleTimeString();
+                const status = latestCheck.success ? 'success' : 'error';
+                const url = latestCheck.url;
+                
+                const newEntry = `
+                    <div class="terminal-line ${status}">
+                        <span class="terminal-prompt">$</span> [${time}] ${latestCheck.success ? '✓' : '✗'} ${url.substring(0, 30)}${url.length > 30 ? '...' : ''}
+                    </div>
+                `;
+                
+                terminal.innerHTML += newEntry;
+                
+                // Keep only last 10 lines
+                const lines = terminal.innerHTML.split('</div>').slice(-10);
+                terminal.innerHTML = lines.join('</div>') + '</div>';
+                
+                // Auto-scroll to bottom
+                terminal.scrollTop = terminal.scrollHeight;
+            }
+        }
+
+        // Check all URLs
+        async function checkAllUrls() {
+            const now = Date.now();
+            const btn = document.getElementById('checkAllBtn');
+            
+            // Rate limiting
+            if (now - lastManualCheck < CHECK_COOLDOWN) {
+                const waitTime = Math.ceil((CHECK_COOLDOWN - (now - lastManualCheck)) / 1000);
+                showToast(`Wait ${waitTime}s before checking again`, 'warning');
+                return;
+            }
+            
+            lastManualCheck = now;
+            btn.innerHTML = '<div class="loader"></div>';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/check-now', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showToast(result.message || 'Checking all URLs', 'success');
+                    
+                    setTimeout(() => {
+                        loadDashboard();
+                        btn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+                        btn.disabled = false;
+                    }, 2000);
+                } else {
+                    const error = await response.json();
+                    showToast(error.error || 'Please wait before checking again', 'warning');
+                    btn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+                btn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+                btn.disabled = false;
+            }
+        }
+
+        // Check single URL
+        async function checkSingleUrl(index, event) {
+            if (event) event.stopPropagation();
+            
+            const now = Date.now();
+            if (now - lastManualCheck < CHECK_COOLDOWN) {
+                const waitTime = Math.ceil((CHECK_COOLDOWN - (now - lastManualCheck)) / 1000);
+                showToast(`Wait ${waitTime}s before checking again`, 'warning');
+                return;
+            }
+            
+            lastManualCheck = now;
+            
+            try {
+                const response = await fetch(`/api/check-url/${index}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showToast(`URL ${index + 1} checked successfully`, 'success');
+                    
+                    setTimeout(() => {
+                        loadDashboard();
+                    }, 1000);
+                } else {
+                    const error = await response.json();
+                    showToast(error.error || 'Check failed', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // Show URL details
+        function showUrlDetails(index) {
+            if (!monitoringData) return;
+            
+            const url = monitoringData.monitoring_info?.urls[index];
+            const lastCheck = monitoringData.checks?.find(c => c.url === url);
+            
+            showToast(
+                `URL ${index + 1}: ${lastCheck?.success ? 'Operational' : 'Down'}`,
+                lastCheck?.success ? 'success' : 'error'
+            );
+        }
+
+        // Refresh dashboard
+        function refreshDashboard() {
+            loadDashboard();
+        }
+
+        // Save settings
+        function saveSettings() {
+            const limit = document.getElementById('settingsHistoryLimit').value;
+            showToast(`Settings saved (History: ${limit} entries)`, 'success');
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const title = document.getElementById('toastTitle');
+            const msg = document.getElementById('toastMessage');
+            
+            // Set toast type
+            toast.className = 'mobile-toast';
+            if (type === 'error') {
+                toast.classList.add('error');
+                title.textContent = 'Error';
+                toast.querySelector('.toast-icon i').className = 'fas fa-exclamation-circle';
+            } else if (type === 'warning') {
+                toast.classList.add('warning');
+                title.textContent = 'Warning';
+                toast.querySelector('.toast-icon i').className = 'fas fa-exclamation-triangle';
+            } else {
+                title.textContent = 'Success';
+                toast.querySelector('.toast-icon i').className = 'fas fa-check-circle';
+            }
+            
+            msg.textContent = message;
+            toast.classList.add('show');
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Add pull-to-refresh functionality for mobile
+        let touchStartY = 0;
+        document.addEventListener('touchstart', (e) => {
+            touchStartY = e.touches[0].clientY;
+        });
+        
+        document.addEventListener('touchend', (e) => {
+            const touchEndY = e.changedTouches[0].clientY;
+            const diff = touchStartY - touchEndY;
+            
+            // Pull down to refresh
+            if (diff > 100 && window.scrollY === 0) {
+                refreshDashboard();
+            }
+        });
+
+        // Handle back button for mobile
+        let backPressed = false;
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' || e.key === 'Backspace') {
+                if (currentTab !== 'monitoring') {
+                    e.preventDefault();
+                    switchTab('monitoring');
+                    backPressed = true;
+                    setTimeout(() => { backPressed = false; }, 100);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
