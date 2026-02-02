@@ -1,6 +1,7 @@
 """
 ETHICAL MULTI-URL MONITORING SERVER
 Monitors multiple websites with proper intervals
+Optimized for Render deployment
 """
 from flask import Flask, render_template, jsonify, request
 import requests
@@ -12,52 +13,71 @@ import sqlite3
 import logging
 import os
 import threading
+import sys
 
 from config import config
 
 app = Flask(__name__)
 
-# Setup logging
+# Setup logging - enhanced for Render
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler(config.LOG_FILE),
-        logging.StreamHandler()
+        logging.StreamHandler(sys.stdout)  # Use sys.stdout for Render
     ]
 )
 logger = logging.getLogger(__name__)
 
 # Set timezone
 os.environ['TZ'] = 'UTC'
-time.tzset()
+try:
+    time.tzset()
+except AttributeError:
+    pass  # Windows compatibility
 
 # Global variables
 last_check_times = {url: 0 for url in config.MONITOR_URLS}
 check_counts = {url: 0 for url in config.MONITOR_URLS}
 monitoring_active = True
 
-# Initialize data storage
+# Initialize data storage - Render compatibility
 def init_database():
     """Initialize SQLite database"""
-    conn = sqlite3.connect(config.DATABASE_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS website_checks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            url TEXT,
-            status_code INTEGER,
-            response_time REAL,
-            success BOOLEAN,
-            error_message TEXT
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
-    logger.info("Database initialized")
+    try:
+        # Use check_same_thread=False for SQLite in multi-threaded environments
+        conn = sqlite3.connect(config.DATABASE_PATH, check_same_thread=False)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS website_checks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                url TEXT,
+                status_code INTEGER,
+                response_time REAL,
+                success BOOLEAN,
+                error_message TEXT
+            )
+        ''')
+        
+        # Add index for better performance
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_url ON website_checks(url)')
+        
+        conn.commit()
+        conn.close()
+        logger.info(f"Database initialized at {config.DATABASE_PATH}")
+    except Exception as e:
+        logger.error(f"Error initializing database: {e}")
+        # Try alternative path for Render
+        try:
+            db_path = os.path.join(os.path.dirname(__file__), config.DATABASE_PATH)
+            conn = sqlite3.connect(db_path, check_same_thread=False)
+            conn.close()
+            logger.info(f"Database accessible at {db_path}")
+        except Exception as e2:
+            logger.error(f"Database still inaccessible: {e2}")
 
 # Load existing JSON data
 def load_tracking_data():
@@ -206,7 +226,8 @@ def update_statistics(data):
 def save_to_database(result):
     """Save result to SQLite database"""
     try:
-        conn = sqlite3.connect(config.DATABASE_PATH)
+        # Use check_same_thread=False for SQLite in multi-threaded environments
+        conn = sqlite3.connect(config.DATABASE_PATH, check_same_thread=False)
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -379,7 +400,8 @@ def get_history():
     limit = int(request.args.get('limit', 50))
     
     try:
-        conn = sqlite3.connect(config.DATABASE_PATH)
+        # Use check_same_thread=False for SQLite in multi-threaded environments
+        conn = sqlite3.connect(config.DATABASE_PATH, check_same_thread=False)
         cursor = conn.cursor()
         
         if url_filter != 'all' and url_filter in config.MONITOR_URLS:
@@ -450,17 +472,33 @@ def control_monitoring():
 
 @app.route('/health')
 def health_check():
-    """Health check endpoint"""
+    """Health check endpoint for Render"""
     return jsonify({
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "monitoring_active": monitoring_active,
         "urls_configured": len(config.MONITOR_URLS),
-        "total_checks": sum(check_counts.values())
+        "total_checks": sum(check_counts.values()),
+        "environment": "Render" if os.environ.get('RENDER') else "Local",
+        "port": os.environ.get('PORT', config.PORT)
+    })
+
+@app.route('/api/debug')
+def debug_info():
+    """Debug endpoint for troubleshooting"""
+    return jsonify({
+        "python_version": sys.version,
+        "working_directory": os.getcwd(),
+        "files_in_dir": os.listdir('.'),
+        "database_exists": os.path.exists(config.DATABASE_PATH),
+        "log_file_exists": os.path.exists(config.LOG_FILE),
+        "json_data_exists": os.path.exists(config.JSON_DATA_PATH),
+        "environment_vars": {k: v for k, v in os.environ.items() if 'KEY' not in k and 'PASS' not in k and 'SECRET' not in k}
     })
 
 # Initialize application
-if __name__ == '__main__':
+def initialize_app():
+    """Initialize the application for both local and Render"""
     # Initialize database
     init_database()
     
@@ -474,33 +512,47 @@ if __name__ == '__main__':
         logger.info("Initial checks completed")
     
     # Start background monitoring thread
-    app.monitor_thread = threading.Thread(target=background_monitor, daemon=True)
-    app.monitor_thread.start()
+    try:
+        app.monitor_thread = threading.Thread(target=background_monitor, daemon=True)
+        app.monitor_thread.start()
+        logger.info("Background monitoring thread started")
+    except Exception as e:
+        logger.error(f"Failed to start monitoring thread: {e}")
+
+# Entry point for Gunicorn
+if __name__ == '__main__':
+    initialize_app()
+    
+    # Get port from environment (Render sets this)
+    port = int(os.environ.get('PORT', config.PORT))
     
     # Display startup info
     logger.info(f"╔══════════════════════════════════════════════╗")
-    logger.info(f"║     ETHICAL MULTI-URL MONITOR - TERMUX       ║")
+    logger.info(f"║     ETHICAL MULTI-URL MONITOR                ║")
     logger.info(f"╠══════════════════════════════════════════════╣")
+    logger.info(f"║ Environment: {'Render' if os.environ.get('RENDER') else 'Local'}")
     logger.info(f"║ URLs configured: {len(config.MONITOR_URLS)}")
     for i, url in enumerate(config.MONITOR_URLS):
         logger.info(f"║ {i+1}. {url}")
     logger.info(f"║ Interval: {config.CHECK_INTERVAL}s ({config.CHECK_INTERVAL//60}min)")
-    logger.info(f"║ Dashboard: http://{config.HOST}:{config.PORT}")
+    logger.info(f"║ Port: {port}")
+    logger.info(f"║ Health check: /health")
+    logger.info(f"║ Debug info: /api/debug")
     logger.info(f"╚══════════════════════════════════════════════╝")
     
     logger.info("⚠️  REMINDER: Only monitor websites you own or have permission to monitor")
     
     try:
         app.run(
-            host=config.HOST,
-            port=config.PORT,
+            host='0.0.0.0',  # Use 0.0.0.0 for Render
+            port=port,
             debug=config.DEBUG,
             use_reloader=False
         )
     except KeyboardInterrupt:
         logger.info("Server shutting down...")
         monitoring_active = False
-        if app.monitor_thread.is_alive():
+        if hasattr(app, 'monitor_thread') and app.monitor_thread.is_alive():
             app.monitor_thread.join(timeout=5)
     except Exception as e:
         logger.error(f"Server error: {e}")
