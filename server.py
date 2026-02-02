@@ -479,8 +479,9 @@ def health_check():
         "monitoring_active": monitoring_active,
         "urls_configured": len(config.MONITOR_URLS),
         "total_checks": sum(check_counts.values()),
-        "environment": "Render" if os.environ.get('RENDER') else "Local",
-        "port": os.environ.get('PORT', config.PORT)
+        "environment": "Render" if config.IS_RENDER else "Local",
+        "host": config.HOST,
+        "port": config.PORT
     })
 
 @app.route('/api/debug')
@@ -493,7 +494,14 @@ def debug_info():
         "database_exists": os.path.exists(config.DATABASE_PATH),
         "log_file_exists": os.path.exists(config.LOG_FILE),
         "json_data_exists": os.path.exists(config.JSON_DATA_PATH),
-        "environment_vars": {k: v for k, v in os.environ.items() if 'KEY' not in k and 'PASS' not in k and 'SECRET' not in k}
+        "config_info": {
+            "is_render": config.IS_RENDER,
+            "host": config.HOST,
+            "port": config.PORT,
+            "debug": config.DEBUG,
+            "monitor_urls_count": len(config.MONITOR_URLS),
+            "check_interval": config.CHECK_INTERVAL
+        }
     })
 
 # Initialize application
@@ -523,19 +531,18 @@ def initialize_app():
 if __name__ == '__main__':
     initialize_app()
     
-    # Get port from environment (Render sets this)
-    port = int(os.environ.get('PORT', config.PORT))
-    
     # Display startup info
     logger.info(f"╔══════════════════════════════════════════════╗")
     logger.info(f"║     ETHICAL MULTI-URL MONITOR                ║")
     logger.info(f"╠══════════════════════════════════════════════╣")
-    logger.info(f"║ Environment: {'Render' if os.environ.get('RENDER') else 'Local'}")
+    logger.info(f"║ Environment: {'Render' if config.IS_RENDER else 'Local'}")
     logger.info(f"║ URLs configured: {len(config.MONITOR_URLS)}")
     for i, url in enumerate(config.MONITOR_URLS):
         logger.info(f"║ {i+1}. {url}")
     logger.info(f"║ Interval: {config.CHECK_INTERVAL}s ({config.CHECK_INTERVAL//60}min)")
-    logger.info(f"║ Port: {port}")
+    logger.info(f"║ Host: {config.HOST}")
+    logger.info(f"║ Port: {config.PORT}")
+    logger.info(f"║ Debug mode: {config.DEBUG}")
     logger.info(f"║ Health check: /health")
     logger.info(f"║ Debug info: /api/debug")
     logger.info(f"╚══════════════════════════════════════════════╝")
@@ -543,10 +550,11 @@ if __name__ == '__main__':
     logger.info("⚠️  REMINDER: Only monitor websites you own or have permission to monitor")
     
     try:
+        # Use the automatically detected host and port from config
         app.run(
-            host='0.0.0.0',  # Use 0.0.0.0 for Render
-            port=port,
-            debug=config.DEBUG,
+            host=config.HOST,  # Automatically 0.0.0.0 on Render, 127.0.0.1 locally
+            port=config.PORT,  # Automatically detected from environment or default
+            debug=config.DEBUG,  # Automatically disabled on Render
             use_reloader=False
         )
     except KeyboardInterrupt:
