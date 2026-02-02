@@ -20,7 +20,7 @@ class Config:
     # Example URLs - CHANGE THESE to your own websites
     MONITOR_URLS = [
         "https://tracking-system-10.onrender.com",
-        "https://your-website-2.com"
+        "https://render-python-app-7i92.onrender.com"
     ]
     
     # Monitoring settings - ETHICAL intervals (minimum 5 minutes)
